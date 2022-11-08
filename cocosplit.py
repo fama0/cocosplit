@@ -64,15 +64,23 @@ def main(args):
             #remove classes that has only one sample, because it can't be split into the training and testing sets
             annotation_categories =  funcy.lremove(lambda i: annotation_categories.count(i) <=1  , annotation_categories)
 
-            annotations =  funcy.lremove(lambda i: i['category_id'] not in annotation_categories  , annotations)
+            filtered_annotations =  funcy.lremove(lambda i: i['category_id'] not in annotation_categories  , annotations)
 
+            X_train, y_train, X_test, y_test = iterative_train_test_split(np.array([filtered_annotations]).T,np.array([ annotation_categories]).T, test_size = 1-args.split)
 
-            X_train, y_train, X_test, y_test = iterative_train_test_split(np.array([annotations]).T,np.array([ annotation_categories]).T, test_size = 1-args.split)
+            img_train = filter_images(images, X_train.reshape(-1))
+            img_test = filter_images(images, X_test.reshape(-1))
+            
+            image_test_ids = funcy.lmap(lambda i: int(i['id']), img_test)
+            img_train = funcy.lremove(lambda a: int(a['id']) in image_test_ids, img_train)
+            
+            anns_train = filter_annotations(annotations, img_train)
+            anns_test = filter_annotations(annotations, img_test)
+            
+            save_coco(args.train, info, licenses, img_train, anns_train, categories)
+            save_coco(args.test, info, licenses,  img_test, anns_test, categories)
 
-            save_coco(args.train, info, licenses, filter_images(images, X_train.reshape(-1)), X_train.reshape(-1).tolist(), categories)
-            save_coco(args.test, info, licenses,  filter_images(images, X_test.reshape(-1)), X_test.reshape(-1).tolist(), categories)
-
-            print("Saved {} entries in {} and {} in {}".format(len(X_train), args.train, len(X_test), args.test))
+            print("Saved {} entries in {} and {} in {}".format(len(anns_train), args.train, len(anns_test), args.test))
             
         else:
 
